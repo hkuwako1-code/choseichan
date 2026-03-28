@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日程調整</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background: #f0f4f8; color: #333; min-height: 100vh; }
+
+    /* Header */
+    .header { background: #3B82F6; color: white; padding: 14px 20px; display: flex; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .header-title { font-size: 20px; font-weight: bold; cursor: pointer; }
+    .header-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .header-nav { margin-left: auto; }
+    .header-nav a { color: white; text-decoration: none; font-size: 14px; background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px; }
+    .header-nav a:hover { background: rgba(255,255,255,0.35); }
+
+    /* Container */
+    .container { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Card */
+    .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 16px; }
+    .card-title { font-size: 17px; font-weight: bold; margin-bottom: 20px; color: #222; }
+
+    /* Form */
+    .form-group { margin-bottom: 24px; }
+    .form-label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #555; }
+    .form-input { width: 100%; padding: 11px 14px; border: 2px solid #E5E7EB; border-radius: 8px; font-size: 15px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+    .form-input:focus { border-color: #3B82F6; }
+
+    /* Buttons */
+    .btn { padding: 11px 22px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.18s; font-family: inherit; }
+    .btn-primary { background: #3B82F6; color: white; }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-secondary { background: #E5E7EB; color: #444; }
+    .btn-secondary:hover { background: #D1D5DB; }
+    .btn-danger { background: #EF4444; color: white; }
+    .btn-danger:hover { background: #DC2626; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+
+    /* Calendar */
+    .cal-grid { display: flex; gap: 16px; flex-wrap: wrap; }
+    .cal { flex: 1; min-width: 268px; max-width: 340px; border: 1.5px solid #E5E7EB; border-radius: 10px; overflow: hidden; }
+    .cal-header { background: #3B82F6; color: white; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+    .cal-month { font-size: 15px; font-weight: bold; }
+    .cal-nav { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 8px; line-height: 1; opacity: 0.9; }
+    .cal-nav:hover { opacity: 1; }
+    .cal-wdays { display: grid; grid-template-columns: repeat(7, 1fr); background: #EFF6FF; }
+    .cal-wdays span { text-align: center; padding: 7px 0; font-size: 11px; font-weight: bold; color: #6B7280; }
+    .cal-wdays span:first-child { color: #EF4444; }
+    .cal-wdays span:last-child { color: #3B82F6; }
+    .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 6px; }
+    .day { height: 34px; display: flex; align-items: center; justify-content: center; font-size: 13px; border-radius: 6px; cursor: pointer; transition: all 0.12s; user-select: none; }
+    .day:hover:not(.empty):not(.past) { background: #DBEAFE; }
+    .day.empty { cursor: default; }
+    .day.past { color: #D1D5DB; cursor: not-allowed; }
+    .day.today { border: 2px solid #3B82F6; font-weight: bold; }
+    .day.sun { color: #EF4444; }
+    .day.sat { color: #3B82F6; }
+    .day.selected { background: #3B82F6; color: white !important; font-weight: bold; }
+    .day.selected.today { border-color: white; }
+
+    /* Date chips */
+    .chips-area { margin-top: 14px; }
+    .chips-label { font-size: 13px; color: #6B7280; margin-bottom: 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 8px; background: #F9FAFB; border-radius: 8px; border: 1.5px solid #E5E7EB; align-items: center; }
+    .chip { background: #3B82F6; color: white; padding: 4px 10px 4px 12px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+    .chip-remove { cursor: pointer; font-size: 15px; opacity: 0.75; line-height: 1; }
+    .chip-remove:hover { opacity: 1; }
+    .chips-empty { color: #9CA3AF; font-size: 13px; }
+
+    /* Timezone */
+    .tz-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tz-row label { font-size: 13px; color: #6B7280; white-space: nowrap; }
+    .tz-select { padding: 8px 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13px; color: #333; background: white; cursor: pointer; max-width: 320px; font-family: inherit; outline: none; }
+    .tz-select:focus { border-color: #3B82F6; }
+
+    /* Time slots */
+    .ts-list { display: flex; flex-wrap: wrap; gap: 8px; min-height: 42px; padding: 8px; background: #F9FAFB; border-radius: 8px; border: 1.5px solid #E5E7EB; align-items: center; margin-bottom: 10px; }
+    .ts-item { display: flex; align-items: center; background: white; border: 1.5px solid #BFDBFE; border-radius: 8px; padding: 5px 6px 5px 10px; gap: 4px; }
+    .ts-input { border: none; outline: none; font-size: 14px; font-weight: bold; color: #1D4ED8; width: 86px; background: transparent; cursor: pointer; font-family: inherit; }
+    .ts-remove { cursor: pointer; color: #9CA3AF; font-size: 16px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
+    .ts-remove:hover { background: #FEE2E2; color: #EF4444; }
+    .ts-hint { font-size: 12px; color: #9CA3AF; margin-top: 6px; }
+
+    /* Divider */
+    .section-divider { border: none; border-top: 1.5px solid #F3F4F6; margin: 20px 0; }
+
+    /* Alert */
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+    .alert-info { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .alert-success { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+
+    /* URL share box */
+    .url-row { display: flex; gap: 8px; margin-top: 8px; }
+    .url-input { flex: 1; padding: 9px 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 12px; color: #555; background: #F9FAFB; }
+
+    /* Respondents */
+    .respondents { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .resp-badge { background: #EFF6FF; color: #1D4ED8; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+
+    /* Table */
+    .resp-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #3B82F6; color: white; padding: 9px 10px; font-size: 12px; text-align: center; white-space: nowrap; min-width: 72px; vertical-align: middle; }
+    th:first-child { background: #2563EB; text-align: left; min-width: 110px; font-size: 13px; }
+    th .th-time { display: block; font-size: 12px; opacity: 0.9; font-weight: normal; margin-top: 2px; }
+    th.best { background: #D97706; }
+    th.best .th-best-label { display: block; font-size: 10px; opacity: 0.9; }
+    td { padding: 8px 10px; border-bottom: 1px solid #F3F4F6; text-align: center; vertical-align: middle; font-size: 14px; }
+    td:first-child { text-align: left; }
+    tr:hover td { background: #FAFAFA; }
+
+    /* Answer buttons */
+    .ans-group { display: flex; gap: 5px; justify-content: center; }
+    .ans-btn { width: 34px; height: 34px; border: 2px solid #E5E7EB; border-radius: 50%; font-size: 14px; cursor: pointer; background: white; transition: all 0.14s; font-weight: bold; color: #D1D5DB; font-family: inherit; }
+    .ans-btn:hover { transform: scale(1.12); }
+    .ans-btn.ok.active  { border-color: #22C55E; background: #22C55E; color: white; }
+    .ans-btn.may.active { border-color: #F59E0B; background: #F59E0B; color: white; }
+    .ans-btn.no.active  { border-color: #EF4444; background: #EF4444; color: white; }
+
+    /* Result cells */
+    .r-ok  { color: #16A34A; font-size: 17px; font-weight: bold; }
+    .r-may { color: #D97706; font-size: 17px; font-weight: bold; }
+    .r-no  { color: #DC2626; font-size: 17px; font-weight: bold; }
+
+    /* Count row */
+    .count-row td { background: #EFF6FF; border-top: 2px solid #3B82F6; }
+    .count-cell { display: flex; gap: 5px; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .cnt { border-radius: 10px; padding: 2px 7px; font-size: 12px; font-weight: bold; }
+    .cnt-ok  { background: #DCFCE7; color: #166534; }
+    .cnt-may { background: #FEF3C7; color: #92400E; }
+    .cnt-no  { background: #FEE2E2; color: #991B1B; }
+
+    /* TZ note in table */
+    .tz-note { font-size: 12px; color: #6B7280; margin-bottom: 8px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 48px 16px; color: #9CA3AF; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    @media (max-width: 600px) {
+      .cal-grid { flex-direction: column; }
+      .cal { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div onclick="navigate('#create')" style="cursor:pointer">
+    <div class="header-title">&#128197; 日程調整</div>
+    <div class="header-sub">みんなの都合をかんたんに確認</div>
+  </div>
+  <div class="header-nav">
+    <a href="#create" onclick="navigate('#create')">新しい予定を作る</a>
+  </div>
+</div>
+
+<div class="container" id="app"></div>
+
+<script>
+// ===== Storage =====
+const SK = 'nichitei_v3';
+function load() {
+  try { return JSON.parse(localStorage.getItem(SK) || '{"events":{}}'); } catch(e) { return {events:{}}; }
+}
+function save(d) { localStorage.setItem(SK, JSON.stringify(d)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+// ===== Timezone options =====
+const TZ_OPTIONS = [
+  { value: 'Asia/Tokyo',           abbr: 'JST',   label: 'JST (UTC+9) — 東京・大阪' },
+  { value: 'Asia/Seoul',           abbr: 'KST',   label: 'KST (UTC+9) — ソウル' },
+  { value: 'Asia/Shanghai',        abbr: 'CST',   label: 'CST (UTC+8) — 上海・北京' },
+  { value: 'Asia/Singapore',       abbr: 'SGT',   label: 'SGT (UTC+8) — シンガポール' },
+  { value: 'Asia/Dubai',           abbr: 'GST',   label: 'GST (UTC+4) — ドバイ' },
+  { value: 'Asia/Kolkata',         abbr: 'IST',   label: 'IST (UTC+5:30) — インド' },
+  { value: 'Australia/Sydney',     abbr: 'AEST',  label: 'AEST/AEDT — シドニー' },
+  { value: 'Europe/London',        abbr: 'GMT',   label: 'GMT/BST — ロンドン' },
+  { value: 'Europe/Paris',         abbr: 'CET',   label: 'CET/CEST — パリ・ベルリン' },
+  { value: 'UTC',                  abbr: 'UTC',   label: 'UTC (UTC+0)' },
+  { value: 'America/New_York',     abbr: 'ET',    label: 'EST/EDT — ニューヨーク' },
+  { value: 'America/Chicago',      abbr: 'CT',    label: 'CST/CDT — シカゴ' },
+  { value: 'America/Los_Angeles',  abbr: 'PT',    label: 'PST/PDT — ロサンゼルス' },
+  { value: 'America/Sao_Paulo',    abbr: 'BRT',   label: 'BRT (UTC-3) — サンパウロ' },
+];
+function getTzAbbr(tz) { return (TZ_OPTIONS.find(o => o.value === tz) || { abbr: tz }).abbr; }
+function getTzLabel(tz) { return (TZ_OPTIONS.find(o => o.value === tz) || { label: tz }).label; }
+
+// ===== Date helpers =====
+const WD = ['日','月','火','水','木','金','土'];
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmtShort(s) {
+  const d = new Date(s + 'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]})`;
+}
+function sortDates(arr) { return [...arr].sort(); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== Slot helpers =====
+function getSlots(ev) {
+  const ts = (ev.timeSlots || []).slice().sort();
+  if (ts.length === 0) {
+    return ev.dates.map(d => ({ key: d, date: d, time: null }));
+  }
+  const result = [];
+  ev.dates.forEach(d => ts.forEach(t => result.push({ key: `${d}|${t}`, date: d, time: t })));
+  return result;
+}
+
+function fmtSlotHeader(slot) {
+  if (slot.time) {
+    return `${fmtShort(slot.date)}<span class="th-time">${slot.time}~</span>`;
+  }
+  return fmtShort(slot.date);
+}
+
+function fmtSlotShort(slot) {
+  return slot.time ? `${fmtShort(slot.date)} ${slot.time}~` : fmtShort(slot.date);
+}
+
+// ===== Calendar state =====
+let cal = { year: new Date().getFullYear(), month: new Date().getMonth(), selected: [] };
+
+function buildMonthHTML(year, month, selected, todayS) {
+  const mn = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += '<div class="day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const s = `${year}-${pad(month+1)}-${pad(d)}`;
+    const past = s < todayS;
+    const dow  = new Date(year, month, d).getDay();
+    let cls = 'day';
+    if (past) cls += ' past';
+    if (s === todayS) cls += ' today';
+    if (selected.includes(s)) cls += ' selected';
+    if (dow === 0) cls += ' sun';
+    if (dow === 6) cls += ' sat';
+    const click = past ? '' : `onclick="toggleDate('${s}')"`;
+    cells += `<div class="${cls}" ${click}>${d}</div>`;
+  }
+  return `
+    <div class="cal">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="calPrev()">&#8249;</button>
+        <span class="cal-month">${year}年 ${mn[month]}</span>
+        <button class="cal-nav" onclick="calNext()">&#8250;</button>
+      </div>
+      <div class="cal-wdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+      <div class="cal-days">${cells}</div>
+    </div>`;
+}
+
+function renderCals() {
+  const el = document.getElementById('cal-container');
+  if (!el) return;
+  const t = todayStr();
+  let y2 = cal.year, m2 = cal.month + 1;
+  if (m2 > 11) { m2 = 0; y2++; }
+  el.innerHTML = buildMonthHTML(cal.year, cal.month, cal.selected, t) +
+                 buildMonthHTML(y2, m2, cal.selected, t);
+}
+
+function updateChips() {
+  const el = document.getElementById('chips');
+  if (!el) return;
+  const sorted = sortDates(cal.selected);
+  document.getElementById('chips-count').textContent = sorted.length;
+  el.innerHTML = sorted.length === 0
+    ? '<span class="chips-empty">カレンダーから日程をクリックして選択</span>'
+    : sorted.map(d => `<span class="chip">${fmtShort(d)}<span class="chip-remove" onclick="removeDate('${d}')">&#215;</span></span>`).join('');
+}
+
+function toggleDate(s) {
+  const i = cal.selected.indexOf(s);
+  if (i >= 0) cal.selected.splice(i, 1); else cal.selected.push(s);
+  renderCals(); updateChips();
+}
+function removeDate(s) {
+  cal.selected = cal.selected.filter(d => d !== s);
+  renderCals(); updateChips();
+}
+function calPrev() {
+  cal.month--; if (cal.month < 0) { cal.month = 11; cal.year--; }
+  renderCals(); updateChips();
+}
+function calNext() {
+  cal.month++; if (cal.month > 11) { cal.month = 0; cal.year++; }
+  renderCals(); updateChips();
+}
+
+// ===== Create form state =====
+let cf = { timeSlots: [], timezone: 'Asia/Tokyo' };
+
+function renderTsList() {
+  const el = document.getElementById('ts-list');
+  if (!el) return;
+  if (cf.timeSlots.length === 0) {
+    el.innerHTML = '<span class="chips-empty" style="font-size:12px">時間を追加すると、日付+時間ごとに集計できます</span>';
+    return;
+  }
+  el.innerHTML = cf.timeSlots.map((t, i) => `
+    <div class="ts-item">
+      <input type="time" class="ts-input" value="${t}" onchange="updateSlot(${i}, this.value)" />
+      <span class="ts-remove" onclick="removeSlot(${i})">&#215;</span>
+    </div>`).join('');
+}
+
+function addSlot() {
+  const last = cf.timeSlots[cf.timeSlots.length - 1];
+  let next = '13:00';
+  if (last) {
+    const [h, m] = last.split(':').map(Number);
+    next = `${pad((h + 2) % 24)}:${pad(m)}`;
+  }
+  cf.timeSlots.push(next);
+  renderTsList();
+}
+function removeSlot(i) { cf.timeSlots.splice(i, 1); renderTsList(); }
+function updateSlot(i, v) { cf.timeSlots[i] = v; }
+
+// ===== Views =====
+
+// --- Create ---
+function renderCreate() {
+  cal.selected = []; cal.year = new Date().getFullYear(); cal.month = new Date().getMonth();
+  cf = { timeSlots: [], timezone: 'Asia/Tokyo' };
+
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="card-title">&#9999;&#65039; 新しい予定を作る</div>
+
+      <div class="form-group">
+        <label class="form-label">イベント名</label>
+        <input class="form-input" id="ev-title" type="text" placeholder="例：忘年会、チームランチ、定例ミーティング..." maxlength="100" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">候補日程を選択</label>
+        <div class="cal-grid" id="cal-container"></div>
+        <div class="chips-area">
+          <div class="chips-label">選択中（<span id="chips-count">0</span>件）</div>
+          <div class="chips" id="chips">
+            <span class="chips-empty">カレンダーから日程をクリックして選択</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="section-divider" />
+
+      <div class="form-group">
+        <label class="form-label">&#9200; 時間帯の設定（省略可）</label>
+        <div class="tz-row">
+          <label>タイムゾーン</label>
+          <select class="tz-select" id="tz-select" onchange="cf.timezone=this.value">
+            ${TZ_OPTIONS.map(o => `<option value="${esc(o.value)}"${o.value==='Asia/Tokyo'?' selected':''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="ts-list" id="ts-list">
+          <span class="chips-empty" style="font-size:12px">時間を追加すると、日付+時間ごとに集計できます</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addSlot()">+ 時間を追加</button>
+        <div class="ts-hint">時間を追加しない場合は日付のみで集計します</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="createEvent()">&#128203; 予定を作成する</button>
+      </div>
+    </div>`;
+
+  renderCals();
+}
+
+function createEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  if (!title) { alert('イベント名を入力してください'); document.getElementById('ev-title').focus(); return; }
+  if (cal.selected.length === 0) { alert('候補日程を1つ以上選択してください'); return; }
+  // Deduplicate and sort time slots
+  const timeSlots = [...new Set(cf.timeSlots.filter(Boolean))].sort();
+  const data = load();
+  const id = uid();
+  data.events[id] = {
+    id, title,
+    dates: sortDates(cal.selected),
+    timeSlots,
+    timezone: cf.timezone,
+    responses: [],
+    createdAt: new Date().toISOString()
+  };
+  save(data);
+  navigate('#event/' + id);
+}
+
+// --- Response ---
+let rs = { name: '', ans: {} };
+
+function renderResponse(id) {
+  const data = load();
+  const ev = data.events[id];
+  if (!ev) { renderNotFound(); return; }
+
+  rs = { name: '', ans: {} };
+  const slots = getSlots(ev);
+  slots.forEach(sl => rs.ans[sl.key] = '');
+
+  const shareUrl = location.href.split('#')[0] + '#event/' + id;
+  const hasTime = ev.timeSlots && ev.timeSlots.length > 0;
+  const tzAbbr = getTzAbbr(ev.timezone || 'Asia/Tokyo');
+
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="card-title">&#128197; ${esc(ev.title)}</div>
+      <div class="alert alert-info">
+        &#128279; このURLを共有して回答を集めましょう
+        <div class="url-row">
+          <input class="url-input" id="surl" type="text" readonly value="${esc(shareUrl)}" />
+          <button class="btn btn-secondary btn-sm" onclick="copyUrl()">コピー</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">&#9998;&#65039; 回答する</div>
+      <div class="form-group">
+        <label class="form-label">お名前</label>
+        <input class="form-input" id="rname" type="text" placeholder="名前を入力..." maxlength="30"
+          style="max-width:280px" oninput="rs.name=this.value" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">日程ごとの都合を選んでください</label>
+        ${hasTime ? `<div class="tz-note">&#127758; 時間はすべて ${esc(getTzLabel(ev.timezone || 'Asia/Tokyo'))} で表示しています</div>` : ''}
+        <div class="resp-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>名前</th>
+                ${slots.map(sl => `<th>${fmtSlotHeader(sl)}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color:#9CA3AF">あなた</strong></td>
+                ${slots.map(sl => `
+                  <td>
+                    <div class="ans-group">
+                      <button class="ans-btn ok"  id="b${sl.key.replace(/[|:]/g,'_')}_ok"  onclick="setAns('${esc(sl.key)}','ok')" >&#9711;</button>
+                      <button class="ans-btn may" id="b${sl.key.replace(/[|:]/g,'_')}_may" onclick="setAns('${esc(sl.key)}','may')">&#9651;</button>
+                      <button class="ans-btn no"  id="b${sl.key.replace(/[|:]/g,'_')}_no"  onclick="setAns('${esc(sl.key)}','no')" >&#10005;</button>
+                    </div>
+                  </td>`).join('')}
+              </tr>
+              ${ev.responses.map(r => `
+                <tr>
+                  <td><strong>${esc(r.name)}</strong></td>
+                  ${slots.map(sl => {
+                    const v = r.answers[sl.key];
+                    const cls = v === 'ok' ? 'r-ok' : v === 'may' ? 'r-may' : v === 'no' ? 'r-no' : '';
+                    const ch  = v === 'ok' ? '&#9711;' : v === 'may' ? '&#9651;' : v === 'no' ? '&#10005;' : '—';
+                    return `<td class="${cls}">${ch}</td>`;
+                  }).join('')}
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="submitResp('${id}')">回答を送信する</button>
+        <button class="btn btn-secondary" onclick="navigate('#event/${id}/results')">集計結果を見る</button>
+      </div>
+    </div>`;
+}
+
+function setAns(key, val) {
+  rs.ans[key] = val;
+  const safeKey = key.replace(/[|:]/g, '_');
+  ['ok','may','no'].forEach(v => {
+    const btn = document.getElementById(`b${safeKey}_${v}`);
+    if (!btn) return;
+    if (v === val) btn.classList.add('active'); else btn.classList.remove('active');
+  });
+}
+
+function submitResp(id) {
+  const name = document.getElementById('rname').value.trim();
+  if (!name) { alert('お名前を入力してください'); document.getElementById('rname').focus(); return; }
+  const data = load();
+  const ev = data.events[id];
+  if (!ev) return;
+  const slots = getSlots(ev);
+  const unanswered = slots.filter(sl => !rs.ans[sl.key]);
+  if (unanswered.length > 0) {
+    alert(`全ての日程に回答してください\n未回答：${unanswered.map(fmtSlotShort).join('、')}`);
+    return;
+  }
+  ev.responses.push({ name, answers: {...rs.ans}, submittedAt: new Date().toISOString() });
+  save(data);
+  const app = document.getElementById('app');
+  const banner = document.createElement('div');
+  banner.className = 'card';
+  banner.innerHTML = '<div class="alert alert-success">&#10003; 回答を送信しました！ありがとうございます。</div>';
+  app.insertBefore(banner, app.firstChild);
+  setTimeout(() => navigate('#event/' + id + '/results'), 1400);
+}
+
+// --- Results ---
+function renderResults(id) {
+  const data = load();
+  const ev = data.events[id];
+  if (!ev) { renderNotFound(); return; }
+  const shareUrl = location.href.split('#')[0] + '#event/' + id;
+  const slots = getSlots(ev);
+  const resps = ev.responses;
+  const hasTime = ev.timeSlots && ev.timeSlots.length > 0;
+
+  // Count per slot
+  const counts = {};
+  slots.forEach(sl => counts[sl.key] = { ok:0, may:0, no:0 });
+  resps.forEach(r => slots.forEach(sl => { const v = r.answers[sl.key]; if (v && counts[sl.key][v] !== undefined) counts[sl.key][v]++; }));
+
+  // Find best slots (max ok, ignore slots with 0 responses)
+  const maxOk = resps.length > 0 ? Math.max(...slots.map(sl => counts[sl.key].ok)) : -1;
+  const best = maxOk > 0 ? slots.filter(sl => counts[sl.key].ok === maxOk).map(sl => sl.key) : [];
+
+  const symCls = { ok: 'r-ok', may: 'r-may', no: 'r-no' };
+  const symCh  = { ok: '&#9711;', may: '&#9651;', no: '&#10005;' };
+
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="card-title">&#128202; ${esc(ev.title)} — 集計結果</div>
+      <div class="alert alert-info">
+        &#128279; 回答募集URL
+        <div class="url-row">
+          <input class="url-input" id="surl" type="text" readonly value="${esc(shareUrl)}" />
+          <button class="btn btn-secondary btn-sm" onclick="copyUrl()">コピー</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      ${resps.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-icon">&#128235;</div>
+          <p style="font-size:16px;font-weight:bold;margin-bottom:8px">まだ回答がありません</p>
+          <p style="font-size:13px">URLを共有して回答を集めましょう</p>
+        </div>` : `
+      ${hasTime ? `<div class="tz-note">&#127758; 時間はすべて ${esc(getTzLabel(ev.timezone || 'Asia/Tokyo'))} で表示しています</div>` : ''}
+      <div class="resp-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>名前</th>
+              ${slots.map(sl => {
+                const isBest = best.includes(sl.key);
+                return `<th${isBest ? ' class="best"' : ''}>${fmtSlotHeader(sl)}${isBest ? '<span class="th-best-label">&#9733; おすすめ</span>' : ''}</th>`;
+              }).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${resps.map(r => `
+              <tr>
+                <td><strong>${esc(r.name)}</strong></td>
+                ${slots.map(sl => {
+                  const v = r.answers[sl.key];
+                  return `<td class="${v ? symCls[v] : ''}">${v ? symCh[v] : '—'}</td>`;
+                }).join('')}
+              </tr>`).join('')}
+            <tr class="count-row">
+              <td><strong>集計 (${resps.length}名)</strong></td>
+              ${slots.map(sl => `
+                <td>
+                  <div class="count-cell">
+                    <span class="cnt cnt-ok">&#9711; ${counts[sl.key].ok}</span>
+                    <span class="cnt cnt-may">&#9651; ${counts[sl.key].may}</span>
+                    <span class="cnt cnt-no">&#10005; ${counts[sl.key].no}</span>
+                  </div>
+                </td>`).join('')}
+            </tr>
+          </tbody>
+        </table>
+      </div>`}
+      <div class="actions" style="margin-top:18px">
+        <button class="btn btn-primary" onclick="navigate('#event/${id}')">&#9998;&#65039; 回答する</button>
+        <button class="btn btn-danger"  onclick="deleteEvent('${id}')">&#128465; 予定を削除</button>
+      </div>
+    </div>`;
+}
+
+function deleteEvent(id) {
+  if (!confirm('この予定を削除しますか？\n全ての回答データも削除されます。')) return;
+  const data = load(); delete data.events[id]; save(data);
+  navigate('#create');
+}
+
+function renderNotFound() {
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="empty-state">
+        <div class="empty-icon">&#128269;</div>
+        <p style="font-size:16px;font-weight:bold;margin-bottom:8px">予定が見つかりません</p>
+        <p style="font-size:13px">URLが正しくないか、削除された可能性があります</p>
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" onclick="navigate('#create')">新しい予定を作る</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ===== Utilities =====
+function copyUrl() {
+  const el = document.getElementById('surl');
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.nextElementSibling;
+    if (btn) { btn.textContent = '✓ コピー済み'; setTimeout(() => btn.textContent = 'コピー', 2000); }
+  }).catch(() => { el.select(); document.execCommand('copy'); });
+}
+function navigate(hash) { location.hash = hash; }
+
+// ===== Router =====
+function router() {
+  const hash = location.hash;
+  if (!hash || hash === '#' || hash === '#create') { renderCreate(); return; }
+  const m = hash.match(/^#event\/([^/]+)(\/results)?$/);
+  if (m) { m[2] ? renderResults(m[1]) : renderResponse(m[1]); return; }
+  renderCreate();
+}
+
+window.addEventListener('hashchange', router);
+window.addEventListener('load', router);
+</script>
+</body>
+</html>
